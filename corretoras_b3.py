@@ -144,6 +144,27 @@ def buscar_corretoras_dia(ticker, dia):
     return df
 
 
+def buscar_fechamento(ticker, dia):
+    """Preço de fechamento do `ticker` no pregão `dia`, lido de raw.volume_preco.
+
+    Reserva para quando o dia não está na planilha de preços (gare_precos / game_precos):
+    serve para o histórico. Levanta erro se o banco não tiver o dia.
+    """
+    dia = _como_data(dia)
+    sql = text("""
+        SELECT preco_fechamento
+        FROM raw.volume_preco
+        WHERE ticker = :ticker AND data_ref = :dia
+        ORDER BY data_carga DESC
+        LIMIT 1
+    """)
+    with _get_engine().connect() as conn:
+        linha = conn.execute(sql, {"ticker": ticker, "dia": dia}).fetchone()
+    if linha is None or linha[0] is None:
+        raise ValueError(f"Sem fechamento do {ticker} em {dia:%d/%m/%Y} em raw.volume_preco (banco corretoras_peers).")
+    return float(linha[0])
+
+
 def buscar_corretoras_mes(ticker, dia, pregoes=None):
     """Participação mensal de cada corretora no MÊS ANTERIOR ao `dia` (compra e venda).
 
